@@ -104,7 +104,7 @@ public class webcontroller extends JavaPlugin {
         // Remove leading/trailing whitespace or newlines
         String cleanedMessage = message.replaceAll("\u001B\\[[;\\d]*m", "").trim();
         for (WebSocket client : connectedClients) {
-            client.send(message);
+            client.send(cleanedMessage);
         }
     }
 
