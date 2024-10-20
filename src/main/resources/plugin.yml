@@ -1,5 +1,5 @@
 name: WebController
-version: '1.0'
+version: '0.5'
 main: com.htaamas.webcontroller
 api-version: '1.20'
 commands:

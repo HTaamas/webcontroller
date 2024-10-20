@@ -101,10 +101,8 @@ public class webcontroller extends JavaPlugin {
     }
 
     private void broadcastToClients(String message) {
-        // Remove leading/trailing whitespace or newlines
-        String cleanedMessage = message.replaceAll("\u001B\\[[;\\d]*m", "").trim();
         for (WebSocket client : connectedClients) {
-            client.send(cleanedMessage);
+            client.send(message);
         }
     }
 
@@ -142,94 +140,165 @@ public class webcontroller extends JavaPlugin {
             if ("GET".equals(exchange.getRequestMethod())) {
                 String response = """
                 <!DOCTYPE html>
-                    <html lang="en">
+                <html lang="en">
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Minecraft Server Console</title>
+                        <title>Minecraft Web Terminál</title>
                         <script src="https://cdn.tailwindcss.com"></script>
-                    <script src="https://cdn.jsdelivr.net/npm/ansi_up@4.0.4/ansi_up.min.js"></script>
+                        <script src="https://cdn.jsdelivr.net/npm/ansi_up@4.0.4/ansi_up.min.js"></script>
                     </head>
                     <body class="bg-gray-900 text-white p-6">
                         <div class="max-w-4xl mx-auto">
-                            <h1 class="text-3xl font-bold mb-4">Minecraft Server Console</h1>
-                           
+                            <h1 class="text-3xl font-bold mb-4">Minecraft Web Terminál</h1>
+
+                            <!-- Command buttons -->
+                            <button onclick="sendDayCommand()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4">Time Set Day</button>
+                            <button onclick="sendNightCommand()" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded mb-4">Time Set Night</button>
+                            <button onclick="sendWClearCommand()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">Weather Clear</button>
+                            <button onclick="sendWRainCommand()" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded mb-4">Weather Rain</button>
+                            <button onclick="openTellModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">Tell</button>
+                            <button onclick="openStopModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4">Stop</button>
+
+                            <!-- Custom command input -->
                             <div class="mb-4">
-                                <input type="text" id="commandInput"
-                                        class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white"
-                                        placeholder="Enter command...">
+                                <input type="text" id="commandInput" class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" placeholder="Saját parancs helye...">
                             </div>
-                           
-                            <button onclick="sendCommand()"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Execute Command
-                            </button>
-                           
-                            <button onclick="sendDayCommand()"
-                                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Time Set Day
-                            </button>
-                
-                            <button onclick="sendNightCommand()"
-                                    class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded mb-4">
-                                Time Night Day
-                            </button>
-                           
-                            <button onclick="sendWClearCommand()"
-                                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">
-                                Weather clear
-                            </button>
-                           
-                            <button onclick="sendWRainCommand()"
-                                    class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded mb-4">
-                                Weather Rain
-                            </button>
-                
-                            <div id="logContainer"
-                                    class="bg-gray-800 p-4 rounded h-96 overflow-y-auto font-mono text-sm">
+                            <button onclick="sendCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">Saját parancs küldése</button>
+
+                            <!-- Log container -->
+                            <div id="logContainer" class="bg-gray-800 p-4 rounded h-96 overflow-y-auto font-mono text-sm"></div>
+
+                            <!-- Tell Modal -->
+                            <div id="tellModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeTellModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeTellModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
+                                    <h2 class="text-2xl font-bold mb-4">Üzenet küldése</h2>
+                                    <input type="text" id="tellInput" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white" placeholder="Mit akarsz üzenni ...">
+                                    <div class="flex justify-end">
+                                        <button onclick="closeTellModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Mégse</button>
+                                        <button onclick="sendTellCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Küldés</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stop Modal -->
+                            <div id="stopModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeStopModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeStopModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
+                                    <h2 class="text-2xl font-bold mb-4 text-red-500">Leállító parancs küldése</h2>
+                                    <p class="mb-4">Biztos le akarod állítani a szervert?</p>
+                                    <div class="flex justify-end">
+                                        <button onclick="closeStopModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Nem</button>
+                                        <button onclick="sendStopCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Igen</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                
+
                         <script>
-                            //console.log(window.location.origin.split("/")[2].split(":")[0]);
-                            const socket = new WebSocket('ws://'+window.location.origin.split("/")[2].split(":")[0]+':8081');
                             const logContainer = document.getElementById('logContainer');
                             const commandInput = document.getElementById('commandInput');
-                
                             const ansi_up = new AnsiUp();
-                            socket.onmessage = function(event) {
+
+                            function appendToLog(message) {
                                 const logEntry = document.createElement('div');
-                                logEntry.innerHTML = ansi_up.ansi_to_html(event.data);
-                                if (logEntry.textContent.trim() !== "") {
-                                    logContainer.appendChild(logEntry);
-                                    logContainer.scrollTop = logContainer.scrollHeight;
+                                logEntry.innerHTML = ansi_up.ansi_to_html(message);  // Convert ANSI to HTML
+                                logContainer.appendChild(logEntry);
+                                logContainer.scrollTop = logContainer.scrollHeight;
+                            }
+
+                            async function sendCommandToRcon(command) {
+                                try {
+                                    const response = await fetch('/send-command', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ command })
+                                    });
+                                    const data = await response.json();
+                                    if (response.ok) {
+                                        appendToLog(data.response);
+                                    } else {
+                                        appendToLog(`Error: ${data.error}`);
+                                    }
+                                } catch (error) {
+                                    appendToLog(`Error: ${error.message}`);
                                 }
-                            };
-                
+                            }
+
                             function sendCommand() {
                                 const command = commandInput.value.trim();
                                 if (command) {
-                                    socket.send(command);
+                                    sendCommandToRcon(command);
                                     commandInput.value = '';
                                 }
                             }
 
                             function sendDayCommand() {
-                                socket.send("time set day");
+                                sendCommandToRcon("time set day");
                             }
-                
+
                             function sendNightCommand() {
-                                socket.send("time set night");
+                                sendCommandToRcon("time set night");
                             }
-                
+
                             function sendWClearCommand() {
-                                socket.send("weather clear");
+                                sendCommandToRcon("weather clear");
                             }
-                
+
                             function sendWRainCommand() {
-                                socket.send("weather rain");
+                                sendCommandToRcon("weather rain");
                             }
-                
+
+                            function sendStopCommand() {
+                                closeStopModal();
+                                sendCommandToRcon("stop");
+                            }
+
+                            function sendTellCommand() {
+                                const tellMessage = document.getElementById('tellInput').value.trim();
+                                if (tellMessage) {
+                                    sendCommandToRcon('tell @a ' + tellMessage);
+                                    closeTellModal();
+                                }
+                            }
+
+                            function openTellModal() {
+                                const modal = document.getElementById('tellModal');
+                                modal.classList.remove('hidden');
+                                setTimeout(() => {
+                                    modal.classList.add('opacity-100');
+                                    modal.querySelector('div').classList.add('scale-100');
+                                }, 10);
+                            }
+
+                            function closeTellModal() {
+                                const modal = document.getElementById('tellModal');
+                                modal.classList.remove('opacity-100');
+                                modal.querySelector('div').classList.remove('scale-100');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                }, 300);
+                            }
+
+                            function openStopModal() {
+                                const modal = document.getElementById('stopModal');
+                                modal.classList.remove('hidden');
+                                setTimeout(() => {
+                                    modal.classList.add('opacity-100');
+                                    modal.querySelector('div').classList.add('scale-100');
+                                }, 10);
+                            }
+
+                            function closeStopModal() {
+                                const modal = document.getElementById('stopModal');
+                                modal.classList.remove('opacity-100');
+                                modal.querySelector('div').classList.remove('scale-100');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                }, 300);
+                            }
+
                             commandInput.addEventListener('keypress', function(e) {
                                 if (e.key === 'Enter') {
                                     sendCommand();
