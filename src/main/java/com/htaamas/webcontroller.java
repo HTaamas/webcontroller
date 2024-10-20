@@ -144,146 +144,188 @@ public class webcontroller extends JavaPlugin {
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Minecraft Server Console</title>
+                        <title>Minecraft Web Terminál</title>
                         <script src="https://cdn.tailwindcss.com"></script>
                         <script src="https://cdn.jsdelivr.net/npm/ansi_up@4.0.4/ansi_up.min.js"></script>
+
+                        <style>
+                            /* Spinner animation */
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                        </style>
                     </head>
                     <body class="bg-gray-900 text-white p-6">
                         <div class="max-w-4xl mx-auto">
-                            <h1 class="text-3xl font-bold mb-4">Minecraft web terminál</h1>
-                            
-                            <button onclick="sendDayCommand()"
-                                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Time Set Day
-                            </button>
+                            <h1 class="text-3xl font-bold mb-4">Minecraft Web Terminál</h1>
 
-                            <button onclick="sendNightCommand()"
-                                    class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded mb-4">
-                                Time Set Night
-                            </button>
-                            
-                            <button onclick="sendWClearCommand()"
-                                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">
-                                Weather clear
-                            </button>
-                            
-                            <button onclick="sendWRainCommand()"
-                                    class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded mb-4">
-                                Weather Rain
-                            </button>
-                            
-                            <!-- Tell button to open the modal -->
-                            <button onclick="openTellModal()"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Tell
-                            </button>
+                            <!-- Command buttons -->
+                            <button onclick="sendDayCommand()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4">Time Set Day</button>
+                            <button onclick="sendNightCommand()" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded mb-4">Time Set Night</button>
+                            <button onclick="sendWClearCommand()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">Weather Clear</button>
+                            <button onclick="sendWRainCommand()" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded mb-4">Weather Rain</button>
+                            <button onclick="openTellModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">Tell</button>
+                            <button onclick="openStopModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4">Stop</button>
 
-                            <button onclick="openStopModal()"
-                                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Stop
-                            </button>
-                            
+                            <!-- Custom command input -->
                             <div class="mb-4">
-                                <input type="text" id="commandInput"
-                                        class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white"
-                                        placeholder="Saját parancs helye...">
+                                <input type="text" id="commandInput" class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" placeholder="Saját parancs helye...">
                             </div>
-                            
-                            <button onclick="sendCommand()"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">
-                                Saját parancs küldése
-                            </button>
+                            <button onclick="sendCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">Saját parancs küldése</button>
 
-                            <div id="logContainer"
-                                    class="bg-gray-800 p-4 rounded h-96 overflow-y-auto font-mono text-sm">
+                            <!-- Log container -->
+                            <div id="logContainer" class="bg-gray-800 p-4 rounded h-96 overflow-y-auto font-mono text-sm"></div>
+
+                            <!-- Connecting Modal -->
+                            <div id="connectingModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                                <div class="bg-gray-900 p-8 rounded-lg shadow-lg text-center flex justify-between items-center w-90 space-x-4">
+                                    <div class="flex flex-col items-start mr-4">
+                                        <!-- Connecting text on the left -->
+                                        <h2 class="text-xl font-semibold text-left">Csatlakozás...</h2>
+                                        <!-- Subtext below the Connecting text -->
+                                        <p class="text-sm text-gray-400 text-left">Kérjük várj ameddig csatlakozunk a szerverhez.</p>
+                                        <p class="text-sm text-gray-400 text-left">Ellenőrizd a szerver állapotát!</p>
+                                    </div>
+
+                                    <!-- Spinner on the right -->
+                                    <div class="w-8 h-8 border-4 border-gray-600 border-t-transparent border-solid rounded-full animate-spin shrink-0" style="width: 32px; height: 32px;"></div>
+                                </div>
                             </div>
 
-                            <!-- Tell Modal Structure -->
-                            <div id="tellModal" onclick="closeTellModal()"
-                                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0">
-                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90"
-                                    onclick="event.stopPropagation()">
-                                    <!-- Close Button (X) -->
-                                    <button onclick="closeTellModal()"
-                                            class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">
-                                        &times;
-                                    </button>
+                            <!-- Tell Modal -->
+                            <div id="tellModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeTellModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeTellModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
                                     <h2 class="text-2xl font-bold mb-4">Üzenet küldése</h2>
-                                    <input type="text" id="tellInput"
-                                        class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white"
-                                        placeholder="Mit akarsz üzenni ...">
+                                    <input type="text" id="tellInput" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white" placeholder="Mit akarsz üzenni ...">
                                     <div class="flex justify-end">
-                                        <button onclick="sendTellCommand()"
-                                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                                            Küldés
-                                        </button>
+                                        <button onclick="closeTellModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Mégse</button>
+                                        <button onclick="sendTellCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Küldés</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Stop Modal Structure -->
-                            <div id="stopModal" onclick="closeStopModal()"
-                                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0">
-                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90"
-                                    onclick="event.stopPropagation()">
-                                    <!-- Close Button (X) -->
-                                    <button onclick="closeStopModal()"
-                                            class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">
-                                        &times;
-                                    </button>
+                            <!-- Stop Modal -->
+                            <div id="stopModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeStopModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeStopModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
                                     <h2 class="text-2xl font-bold mb-4 text-red-500">Leállító parancs küldése</h2>
-                                    <p class="mb-2">Biztos le akarod állítani a szervert?</p>
+                                    <p class="mb-4">Biztos le akarod állítani a szervert?</p>
                                     <div class="flex justify-end">
-                                        <button onclick="sendStopCommand()"
-                                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                                            Igen
-                                        </button>
+                                        <button onclick="closeStopModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Nem</button>
+                                        <button onclick="sendStopCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Igen</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <script>
-                            const socket = new WebSocket('ws://'+window.location.origin.split("/")[2].split(":")[0]+':8081');
+                            let socket;
                             const logContainer = document.getElementById('logContainer');
                             const commandInput = document.getElementById('commandInput');
-
-                            const ansi_up = new AnsiUp();
-                            socket.onmessage = function(event) {
+                            const ansiUp = new AnsiUp(); // Create an instance of AnsiUp
+                            
+                            // Add an initial log entry to verify the container is working
+                            function addLogEntry(message, isDebug = false) {
                                 const logEntry = document.createElement('div');
-                                logEntry.innerHTML = ansi_up.ansi_to_html(event.data);
+                                logEntry.className = 'log-entry';
+
+                                function formatTime(number) {
+                                    return number < 10 ? '0' + number : number;
+                                }
+
+                                let now = new Date();
+                                let hours = formatTime(now.getHours());
+                                let minutes = formatTime(now.getMinutes());
+                                let seconds = formatTime(now.getSeconds());
+                                
+                                // Convert ANSI codes to HTML and sanitize the message
+                                const sanitizedMessage = isDebug ? 
+                                    `<span style="color: #888">[${hours}:${minutes}:${seconds} INFO]: ${message}</span>` : 
+                                    ansiUp.ansi_to_html(message);
+                                
+                                logEntry.innerHTML = sanitizedMessage;
+                                
                                 if (logEntry.textContent.trim() !== "") {
                                     logContainer.appendChild(logEntry);
                                     logContainer.scrollTop = logContainer.scrollHeight;
+                                    
+                                    // Keep only the last 1000 entries to prevent memory issues
+                                    while (logContainer.children.length > 1000) {
+                                        logContainer.removeChild(logContainer.firstChild);
+                                    }
                                 }
-                            };
+                            }
+
+                            function connectWebSocket() {
+                                socket = new WebSocket(`ws://${window.location.hostname}:8081`);
+                                
+                                addLogEntry('Connecting to WebSocket server...', true);
+
+                                socket.onopen = function() {
+                                    addLogEntry('Connected to server!', true);
+                                    document.getElementById('connectingModal').style.display = 'none';
+                                    startHeartbeat();
+                                };
+
+                                socket.onmessage = function(event) {
+                                    console.log('Received message:', event.data); // Debug log
+                                    addLogEntry(event.data);
+                                };
+
+                                socket.onerror = function(error) {
+                                    console.error('WebSocket error:', error);
+                                };
+
+                                socket.onclose = function() {
+                                    addLogEntry('Connection lost, attempting to reconnect...', true);
+                                    document.getElementById('connectingModal').style.display = 'flex';
+                                    setTimeout(connectWebSocket, 5000);
+                                };
+                            }
 
                             function sendCommand() {
                                 const command = commandInput.value.trim();
-                                if (command) {
+                                if (command && socket.readyState === WebSocket.OPEN) {
+                                    addLogEntry(`> ${command}`, true); // Log the sent command
                                     socket.send(command);
                                     commandInput.value = '';
                                 }
                             }
 
+                            // Enhanced command functions with logging
                             function sendDayCommand() {
-                                socket.send("time set day");
+                                if (socket.readyState === WebSocket.OPEN) {
+                                    addLogEntry('> time set day', true);
+                                    socket.send("time set day");
+                                }
                             }
 
                             function sendNightCommand() {
-                                socket.send("time set night");
+                                if (socket.readyState === WebSocket.OPEN) {
+                                    addLogEntry('> time set night', true);
+                                    socket.send("time set night");
+                                }
                             }
 
                             function sendWClearCommand() {
-                                socket.send("weather clear");
+                                if (socket.readyState === WebSocket.OPEN) {
+                                    addLogEntry('> weather clear', true);
+                                    socket.send("weather clear");
+                                }
                             }
 
                             function sendWRainCommand() {
-                                socket.send("weather rain");
+                                if (socket.readyState === WebSocket.OPEN) {
+                                    addLogEntry('> weather rain', true);
+                                    socket.send("weather rain");
+                                }
                             }
 
                             function sendStopCommand() {
                                 closeStopModal();  // Close modal after sending
+                                addLogEntry(`> stop`, true); // Log the sent command
                                 socket.send("stop");
                             }
 
@@ -291,6 +333,7 @@ public class webcontroller extends JavaPlugin {
                                 const tellMessage = document.getElementById('tellInput').value.trim();
                                 if (tellMessage) {
                                     socket.send('tell @a ' + tellMessage);  // Sends a "tell" command
+                                    addLogEntry(`> tell @a ${tellMessage}`, true); // Log the sent command
                                     closeTellModal();  // Close modal after sending
                                 }
                             }
@@ -331,6 +374,10 @@ public class webcontroller extends JavaPlugin {
                                 }, 300); // Matches the duration of the transition
                             }
 
+                            // Start the connection when the page loads
+                            connectWebSocket();
+
+                            // Add command input Enter key handler
                             commandInput.addEventListener('keypress', function(e) {
                                 if (e.key === 'Enter') {
                                     sendCommand();
