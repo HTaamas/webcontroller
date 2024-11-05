@@ -1,8 +1,8 @@
 name: WebController
-version: '0.5'
+version: '1.0'
 main: com.htaamas.webcontroller
 api-version: '1.20'
 commands:
-  hello:
-    description: Sends a hello message
-    usage: /<command>
+  # hello:
+  #   description: Sends a hello message
+  #   usage: /<command>
