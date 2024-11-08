@@ -17,10 +17,16 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.RuntimeMXBean;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class webcontroller extends JavaPlugin {
     private HttpServer httpServer;
@@ -39,6 +45,15 @@ public class webcontroller extends JavaPlugin {
             httpServer.setExecutor(Executors.newFixedThreadPool(10));
             httpServer.start();
             getLogger().info("HTTP server started on port 8080");
+
+            // Start sending server information every 5 seconds
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    sendServerInfo();
+                }
+            }, 0, 5000); // 5 seconds
 
             // Start WebSocket server for live logs
             webSocketServer = new WebSocketServer(new InetSocketAddress(8081)) {
@@ -100,6 +115,40 @@ public class webcontroller extends JavaPlugin {
         }
     }
 
+    private void sendServerInfo() {
+        // Get system stats
+        OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+        MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+        RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+
+        // Memory usage
+        long usedMemory = memoryBean.getHeapMemoryUsage().getUsed();
+        long maxMemory = memoryBean.getHeapMemoryUsage().getMax();
+
+        // Uptime (in milliseconds)
+        long uptime = runtimeBean.getUptime();
+
+        // CPU load (0.0 to 1.0)
+        double cpuLoad = osBean.getSystemLoadAverage();
+
+        // Handle negative load values
+        if (cpuLoad < 0) {
+            cpuLoad = 0; // or display "N/A"
+        }
+
+        String cpuLoadDisplay = String.format("%.2f%%", cpuLoad * 100);
+
+        // Prepare JSON-like data string
+        String serverInfo = String.format(
+            "{\"memoryUsage\":\"%d/%d MB\",\"uptime\":\"%d minutes\",\"cpuLoad\":\"%s\"}",
+            usedMemory / (1024 * 1024), maxMemory / (1024 * 1024),
+            uptime / 60000, cpuLoadDisplay
+        );
+
+        // Broadcast to all clients
+        broadcastToClients(serverInfo);
+    }
+
     private void broadcastToClients(String message) {
         for (WebSocket client : connectedClients) {
             client.send(message);
@@ -158,7 +207,10 @@ public class webcontroller extends JavaPlugin {
                     </head>
                     <body class="bg-gray-900 text-white p-6">
                         <div class="max-w-4xl mx-auto">
-                            <h1 class="text-3xl font-bold mb-4">Minecraft Web Terminál</h1>
+                            <div class="flex justify-between mb-4">
+                                <h1 class="text-3xl font-bold mb-4">Minecraft Web Terminál</h1>
+                                <button onclick="openInfoModal()" class="text-white hover:text-gray-400 font-bold mb-4">. . .</button>
+                            </div>
 
                             <!-- Command buttons -->
                             <button onclick="sendDayCommand()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4">Time Set Day</button>
@@ -166,6 +218,7 @@ public class webcontroller extends JavaPlugin {
                             <button onclick="sendWClearCommand()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">Weather Clear</button>
                             <button onclick="sendWRainCommand()" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded mb-4">Weather Rain</button>
                             <button onclick="openTellModal()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4">Tell</button>
+                            <button onclick="openDifficultyModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">Difficulty</button>
                             <button onclick="openStopModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4">Stop</button>
 
                             <!-- Custom command input -->
@@ -176,6 +229,17 @@ public class webcontroller extends JavaPlugin {
 
                             <!-- Log container -->
                             <div id="logContainer" class="bg-gray-800 p-4 rounded h-96 overflow-y-auto font-mono text-sm"></div>
+
+                            <!-- Info Modal -->
+                            <div id="infoModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeInfoModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeInfoModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
+                                    <h2 class="text-2xl font-bold mb-4">Információk</h2>
+                                    <p><strong>Elindulás óta eltelt idő:</strong> <span id="serverUptime">Betöltés...</span></p>
+                                    <p><strong>Memória felhasználtság:</strong> <span id="memoryUsage">Betöltés...</span></p>
+                                    <p><strong>Processzor terhelés:</strong> <span id="cpuLoad">Betöltés...</span></p>
+                                </div>
+                            </div>
 
                             <!-- Connecting Modal -->
                             <div id="connectingModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
@@ -202,6 +266,24 @@ public class webcontroller extends JavaPlugin {
                                     <div class="flex justify-end">
                                         <button onclick="closeTellModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Mégse</button>
                                         <button onclick="sendTellCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Küldés</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Difficulty Modal -->
+                            <div id="difficultyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300 ease-out opacity-0" onclick="closeDifficultyModal()">
+                                <div class="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full relative transform transition-transform duration-300 ease-out scale-90" onclick="event.stopPropagation()">
+                                    <button onclick="closeDifficultyModal()" class="absolute top-5.5 right-6 text-gray-400 hover:text-gray-200 font-bold text-3xl w-8 h-8 flex items-center justify-center p-0">&times;</button>
+                                    <h2 class="text-2xl font-bold mb-4">Nehézség kiválasztása:</h2>
+                                    <select name="difficulty" id="difficultyList" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded text-white">
+                                        <option value="peaceful">Békés</option>
+                                        <option value="easy">Könnyű</option>
+                                        <option value="normal">Normál</option>
+                                        <option value="hard">Nehéz</option>
+                                    </select>
+                                    <div class="flex justify-end">
+                                        <button onclick="closeDifficultyModal()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2">Mégse</button>
+                                        <button onclick="sendDifficultyCommand()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Küldés</button>
                                     </div>
                                 </div>
                             </div>
@@ -270,8 +352,20 @@ public class webcontroller extends JavaPlugin {
                                 };
 
                                 socket.onmessage = function(event) {
-                                    console.log('Received message:', event.data); // Debug log
-                                    addLogEntry(event.data);
+                                    try {
+                                        // Try to parse the message as JSON (for server info updates)
+                                        const data = JSON.parse(event.data);
+
+                                        // If it's JSON, update the info tab
+                                        if (data.memoryUsage && data.uptime && data.cpuLoad) {
+                                            document.getElementById('memoryUsage').textContent = data.memoryUsage;
+                                            document.getElementById('serverUptime').textContent = data.uptime;
+                                            document.getElementById('cpuLoad').textContent = data.cpuLoad;
+                                        }
+                                    } catch (e) {
+                                        // If it's not JSON, treat it as a log message
+                                        addLogEntry(event.data);
+                                    }
                                 };
 
                                 socket.onerror = function(error) {
@@ -323,12 +417,6 @@ public class webcontroller extends JavaPlugin {
                                 }
                             }
 
-                            function sendStopCommand() {
-                                closeStopModal();  // Close modal after sending
-                                addLogEntry(`> stop`, true); // Log the sent command
-                                socket.send("stop");
-                            }
-
                             function sendTellCommand() {
                                 const tellMessage = document.getElementById('tellInput').value.trim();
                                 if (tellMessage) {
@@ -336,6 +424,39 @@ public class webcontroller extends JavaPlugin {
                                     addLogEntry(`> tell @a ${tellMessage}`, true); // Log the sent command
                                     closeTellModal();  // Close modal after sending
                                 }
+                            }
+
+                            function sendDifficultyCommand() {
+                                const difficultySetting = document.getElementById('difficultyList').value.trim();
+                                if (difficultySetting) {
+                                    socket.send('difficulty ' + difficultySetting);  // Sends a "difficulty" command
+                                    addLogEntry(`> difficulty ${difficultySetting}`, true); // Log the sent command
+                                    closeDifficultyModal();  // Close modal after sending
+                                }
+                            }
+
+                            function sendStopCommand() {
+                                closeStopModal();  // Close modal after sending
+                                addLogEntry(`> stop`, true); // Log the sent command
+                                socket.send("stop");
+                            }
+                            
+                            function openInfoModal() {
+                                const modal = document.getElementById('infoModal');
+                                modal.classList.remove('hidden');
+                                setTimeout(() => {
+                                    modal.classList.add('opacity-100');
+                                    modal.querySelector('div').classList.add('scale-100');
+                                }, 10);
+                            }
+
+                            function closeInfoModal() {
+                                const modal = document.getElementById('infoModal');
+                                modal.classList.remove('opacity-100');
+                                modal.querySelector('div').classList.remove('scale-100');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                }, 300); // Matches the duration of the transition
                             }
 
                             function openTellModal() {
@@ -349,6 +470,24 @@ public class webcontroller extends JavaPlugin {
 
                             function closeTellModal() {
                                 const modal = document.getElementById('tellModal');
+                                modal.classList.remove('opacity-100');
+                                modal.querySelector('div').classList.remove('scale-100');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                }, 300); // Matches the duration of the transition
+                            }
+
+                            function openDifficultyModal() {
+                                const modal = document.getElementById('difficultyModal');
+                                modal.classList.remove('hidden');
+                                setTimeout(() => {
+                                    modal.classList.add('opacity-100');
+                                    modal.querySelector('div').classList.add('scale-100');
+                                }, 10);
+                            }
+
+                            function closeDifficultyModal() {
+                                const modal = document.getElementById('difficultyModal');
                                 modal.classList.remove('opacity-100');
                                 modal.querySelector('div').classList.remove('scale-100');
                                 setTimeout(() => {
