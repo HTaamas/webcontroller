@@ -38,5 +38,4 @@ build/
 .DS_Store
 
 ### Own ###
-test.html
-tailwind.config.js
+html_test/
