@@ -161,7 +161,7 @@
                     document.getElementById('commandButtons').classList.remove('hidden');
                     connectWebSocket();  // Only connect if authorized
                 } else {
-                    window.location.href = "/login.html";  // Redirect to login page if not authorized
+                    window.location.href = "/login";  // Redirect to login page if not authorized
                 }
             }
  
@@ -341,7 +341,7 @@
                     modal.classList.add('hidden');
                 }, 300); // Matches the duration of the transition
             }
-            
+
             // Start the authorization check when the page loads
             checkAuthorization();
 
