@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Minecraft Web Terminál</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-900 text-white p-6">
+        <div class="max-w-4xl mx-auto">
+            <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                <div class="bg-gray-900 p-8 rounded-lg shadow-lg text-center flex justify-between items-center w-90 space-x-4">
+                    <h2 class="text-xl font-semibold text-left">Bejelentkezés</h2>
+                    <input type="text" id="username" placeholder="Név" class="w-full p-2 rounded-md bg-gray-800 text-white">
+                    <input type="password" id="password" placeholder="Jelszó" class="w-full p-2 rounded-md bg-gray-800 text-white">
+                    <button onclick="login()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Bejelentkezés</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            async function login() {
+                const username = document.getElementById("username").value;
+                const password = document.getElementById("password").value;
+        
+                if (username === "" || password === "") {
+                    alert("Nem adtál meg név és jelszó!");
+                    return;
+                }
+        
+                const data = {
+                    username: username,
+                    password: password
+                };
+        
+                try {
+                    const response = await fetch(`http://${window.location.hostname}:8081/login`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    });
+        
+                    if (response.ok) {
+                        const result = await response.json(); // Assuming the server responds with a JSON object
+                        document.cookie = `token=${result.token}; path=/;`;
+                        window.location.href = "/"; // Redirect to the home page after successful login
+                    } else {
+                        alert("Hibás név vagy jelszó!");
+                    }
+                } catch (error) {
+                    console.error("Error during login:", error);
+                    alert("Hiba történt a bejelentkezés során.");
+                }
+            }
+        </script>
+    </body>
+</html>
