@@ -227,34 +227,69 @@ public class webcontroller extends JavaPlugin {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if ("POST".equals(exchange.getRequestMethod())) {
-                // Read the request body (JSON with username and password)
-                InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "utf-8");
-                BufferedReader br = new BufferedReader(isr);
-                StringBuilder jsonInput = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    jsonInput.append(line);
+                // Handle login logic here, such as reading JSON input, validating credentials, etc.
+                handleLogin(exchange);
+            } else {
+                // For GET request, serve the login HTML file
+                serveLoginPage(exchange);
+            }
+        }
+    
+        private void serveLoginPage(HttpExchange exchange) throws IOException {
+            // Load the login.html file from resources
+            String response = getHtmlContent("login.html");
+    
+            // Set the content type to text/html
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+    
+            // Send the response headers
+            exchange.sendResponseHeaders(200, response.getBytes().length);
+    
+            // Write the HTML content to the response body
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        }
+    
+        private String getHtmlContent(String filename) {
+            // Load the HTML content from the resources folder
+            try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
+                if (inputStream == null) {
+                    return "<html><body><h1>HTML file not found</h1></body></html>";
                 }
-
-                // Parse JSON (you can use a library like Gson or org.json)
-                String requestBody = jsonInput.toString();
-                JSONObject json = new JSONObject(requestBody);
-                String username = json.getString("username");
-                String password = json.getString("password");
-
-                // Validate credentials (hardcoded example, replace with real validation)
-                if ("admin".equals(username) && "password123".equals(password)) {
-                    String response = "{\"token\":\"abc123\"}"; // Example token
-                    exchange.getResponseHeaders().set("Content-Type", "application/json");
-                    exchange.sendResponseHeaders(200, response.getBytes().length);
-                    try (OutputStream os = exchange.getResponseBody()) {
-                        os.write(response.getBytes());
-                    }
-                } else {
-                    exchange.sendResponseHeaders(401, -1); // Unauthorized
+                return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return "<html><body><h1>Error reading HTML file</h1></body></html>";
+            }
+        }
+    
+        private void handleLogin(HttpExchange exchange) throws IOException {
+            // Process login request (username and password)
+            InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "utf-8");
+            BufferedReader br = new BufferedReader(isr);
+            StringBuilder jsonInput = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                jsonInput.append(line);
+            }
+    
+            // Parse JSON (you can use a library like Gson or org.json)
+            String requestBody = jsonInput.toString();
+            JSONObject json = new JSONObject(requestBody);
+            String username = json.getString("username");
+            String password = json.getString("password");
+    
+            // Validate credentials (hardcoded example, replace with real validation)
+            if ("admin".equals(username) && "password123".equals(password)) {
+                String response = "{\"token\":\"abc123\"}"; // Example token
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, response.getBytes().length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(response.getBytes());
                 }
             } else {
-                exchange.sendResponseHeaders(405, -1); // Method not allowed
+                exchange.sendResponseHeaders(401, -1); // Unauthorized
             }
         }
     }

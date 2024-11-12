@@ -158,7 +158,6 @@
             // Show command buttons if the user is authorized
             function checkAuthorization() {
                 if (isUserAuthorized()) {
-                    document.getElementById('commandButtons').classList.remove('hidden');
                     connectWebSocket();  // Only connect if authorized
                 } else {
                     window.location.href = "/login";  // Redirect to login page if not authorized
@@ -177,7 +176,6 @@
                 socket.onopen = function() {
                     addLogEntry('Connected to server!', true);
                     document.getElementById('connectingModal').style.display = 'none';
-                    startHeartbeat();
                 };
 
                 socket.onmessage = function(event) {
@@ -265,6 +263,7 @@
             }
 
             function sendStopCommand() {
+                // TODO : Disconnect the client before stopping the server to not create error
                 closeStopModal();  // Close modal after sending
                 addLogEntry(`> stop`, true); // Log the sent command
                 socket.send("stop");
